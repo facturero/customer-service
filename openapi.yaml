@@ -1,0 +1,547 @@
+openapi: 3.0.3
+
+info:
+  title: customer-service API
+  version: 1.0.0
+  description: >
+    Core del CRM: clientes, contactos, direcciones y etiquetas. Aislamiento por
+    `organization_id`. No verifica JWT: confía en las cabeceras del gateway
+    (`X-Organization-Id`, `X-User-Id`, `X-Country-Code`, `X-Permissions`). Todas las
+    rutas (salvo /health) exigen `X-Organization-Id`; el enforcement fino usa
+    `X-Permissions` (customer:read|create|update|delete). Operar sobre un recurso de
+    otra organización responde 404.
+
+servers:
+  - url: http://localhost:3004
+    description: Desarrollo local (puerto interno; en producción va tras el api-gateway)
+
+tags:
+  - name: health
+  - name: customers
+  - name: contacts
+  - name: addresses
+  - name: tags
+  - name: catalog
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Healthcheck
+      responses:
+        '200':
+          description: Operativo
+          content:
+            application/json:
+              schema: { type: object, properties: { status: { type: string, example: ok } } }
+
+  /customers:
+    get:
+      tags: [customers]
+      summary: Listar clientes
+      x-required-permission: customer:read
+      parameters:
+        - { $ref: '#/components/parameters/OrgHeader' }
+        - { name: search, in: query, schema: { type: string }, description: Busca por nombre/identificación/email }
+        - { name: status, in: query, schema: { type: string, enum: [active, inactive] } }
+        - { name: tagId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Clientes
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Customer' } }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [customers]
+      summary: Crear cliente
+      description: Valida el tipo de identificación contra el catálogo del país y el `regex`. Emite `customer.customer.created`.
+      x-required-permission: customer:create
+      parameters: [{ $ref: '#/components/parameters/OrgHeader' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCustomerRequest' }
+            examples:
+              empresa:
+                value: { businessName: Acme S.A., type: company, identificationTypeId: 3f…, identification: "1790012345001", email: ventas@acme.com }
+      responses:
+        '201':
+          description: Cliente creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Customer' }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Ya existe un cliente con esa identificación en la organización
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: CUSTOMER_EXISTS, message: Ya existe un cliente con esa identificación. }
+        '422':
+          description: Identificación inválida o tipo inexistente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { code: INVALID_IDENTIFICATION, message: La identificación no cumple el formato del tipo. }
+
+  /customers/{id}:
+    get:
+      tags: [customers]
+      summary: Obtener un cliente (con contactos, direcciones y etiquetas)
+      x-required-permission: customer:read
+      parameters:
+        - { $ref: '#/components/parameters/OrgHeader' }
+        - { $ref: '#/components/parameters/CustomerId' }
+      responses:
+        '200':
+          description: Cliente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerDetail' }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [customers]
+      summary: Actualizar un cliente
+      description: Emite `customer.customer.updated`.
+      x-required-permission: customer:update
+      parameters:
+        - { $ref: '#/components/parameters/OrgHeader' }
+        - { $ref: '#/components/parameters/CustomerId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCustomerRequest' }
+      responses:
+        '200':
+          description: Actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Customer' }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /customers/{id}/disable:
+    post:
+      tags: [customers]
+      summary: Desactivar un cliente
+      description: Emite `customer.customer.disabled` (billing bloquea nuevas facturas).
+      x-required-permission: customer:update
+      parameters:
+        - { $ref: '#/components/parameters/OrgHeader' }
+        - { $ref: '#/components/parameters/CustomerId' }
+      responses:
+        '204': { description: Desactivado }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /customers/{id}/contacts:
+    get:
+      tags: [contacts]
+      summary: Listar contactos del cliente
+      x-required-permission: customer:read
+      parameters:
+        - { $ref: '#/components/parameters/OrgHeader' }
+        - { $ref: '#/components/parameters/CustomerId' }
+      responses:
+        '200':
+          description: Contactos
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Contact' } }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [contacts]
+      summary: Añadir contacto
+      x-required-permission: customer:update
+      parameters:
+        - { $ref: '#/components/parameters/OrgHeader' }
+        - { $ref: '#/components/parameters/CustomerId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContactRequest' }
+      responses:
+        '201':
+          description: Contacto creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Contact' }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /contacts/{id}:
+    patch:
+      tags: [contacts]
+      summary: Actualizar contacto
+      x-required-permission: customer:update
+      parameters:
+        - { $ref: '#/components/parameters/OrgHeader' }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContactRequest' }
+      responses:
+        '200':
+          description: Actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Contact' }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [contacts]
+      summary: Eliminar contacto
+      x-required-permission: customer:update
+      parameters:
+        - { $ref: '#/components/parameters/OrgHeader' }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Eliminado }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /customers/{id}/addresses:
+    get:
+      tags: [addresses]
+      summary: Listar direcciones del cliente
+      x-required-permission: customer:read
+      parameters:
+        - { $ref: '#/components/parameters/OrgHeader' }
+        - { $ref: '#/components/parameters/CustomerId' }
+      responses:
+        '200':
+          description: Direcciones
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Address' } }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [addresses]
+      summary: Añadir dirección
+      x-required-permission: customer:update
+      parameters:
+        - { $ref: '#/components/parameters/OrgHeader' }
+        - { $ref: '#/components/parameters/CustomerId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddressRequest' }
+      responses:
+        '201':
+          description: Dirección creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Address' }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /addresses/{id}:
+    patch:
+      tags: [addresses]
+      summary: Actualizar dirección
+      x-required-permission: customer:update
+      parameters:
+        - { $ref: '#/components/parameters/OrgHeader' }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddressRequest' }
+      responses:
+        '200':
+          description: Actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Address' }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [addresses]
+      summary: Eliminar dirección
+      x-required-permission: customer:update
+      parameters:
+        - { $ref: '#/components/parameters/OrgHeader' }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Eliminada }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /tags:
+    get:
+      tags: [tags]
+      summary: Listar etiquetas de la organización
+      x-required-permission: customer:read
+      parameters: [{ $ref: '#/components/parameters/OrgHeader' }]
+      responses:
+        '200':
+          description: Etiquetas
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Tag' } }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [tags]
+      summary: Crear etiqueta
+      x-required-permission: customer:update
+      parameters: [{ $ref: '#/components/parameters/OrgHeader' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TagRequest' }
+      responses:
+        '201':
+          description: Etiqueta creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tag' }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Ya existe una etiqueta con ese nombre
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /customers/{id}/tags:
+    post:
+      tags: [tags]
+      summary: Asignar etiqueta a un cliente
+      x-required-permission: customer:update
+      parameters:
+        - { $ref: '#/components/parameters/OrgHeader' }
+        - { $ref: '#/components/parameters/CustomerId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [tagId], properties: { tagId: { type: string, format: uuid } } }
+      responses:
+        '204': { description: Etiqueta asignada }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /customers/{id}/tags/{tagId}:
+    delete:
+      tags: [tags]
+      summary: Quitar etiqueta de un cliente
+      x-required-permission: customer:update
+      parameters:
+        - { $ref: '#/components/parameters/OrgHeader' }
+        - { $ref: '#/components/parameters/CustomerId' }
+        - { name: tagId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Etiqueta quitada }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /identification-types:
+    get:
+      tags: [catalog]
+      summary: Tipos de identificación válidos (read-model, por el país del contexto)
+      description: Del read-model local alimentado por tax; útil para poblar el formulario de cliente.
+      x-required-permission: customer:read
+      parameters: [{ $ref: '#/components/parameters/OrgHeader' }]
+      responses:
+        '200':
+          description: Tipos de identificación
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/IdentificationType' } }
+        '401': { $ref: '#/components/responses/OrgContextRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+components:
+  parameters:
+    OrgHeader:
+      name: X-Organization-Id
+      in: header
+      required: true
+      description: Organización activa; lo inyecta el gateway desde el JWT.
+      schema: { type: string, format: uuid }
+    CustomerId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  schemas:
+    Customer:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        countryCode: { type: string, example: EC }
+        identificationTypeId: { type: string, format: uuid, nullable: true }
+        identification: { type: string, nullable: true }
+        businessName: { type: string }
+        tradeName: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        type: { type: string, enum: [person, company] }
+        status: { type: string, enum: [active, inactive] }
+        metadata: { type: object, nullable: true, additionalProperties: true }
+    CustomerDetail:
+      allOf:
+        - $ref: '#/components/schemas/Customer'
+        - type: object
+          properties:
+            contacts: { type: array, items: { $ref: '#/components/schemas/Contact' } }
+            addresses: { type: array, items: { $ref: '#/components/schemas/Address' } }
+            tags: { type: array, items: { $ref: '#/components/schemas/Tag' } }
+    Contact:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        position: { type: string, nullable: true }
+    Address:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        type: { type: string, enum: [billing, shipping, other] }
+        line1: { type: string }
+        line2: { type: string, nullable: true }
+        city: { type: string, nullable: true }
+        province: { type: string, nullable: true }
+        countryCode: { type: string, nullable: true }
+        postalCode: { type: string, nullable: true }
+        isPrimary: { type: boolean }
+    Tag:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        name: { type: string }
+        color: { type: string, nullable: true }
+    IdentificationType:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        countryCode: { type: string, example: EC }
+        code: { type: string, example: RUC }
+        name: { type: string, example: RUC }
+        regex: { type: string, nullable: true }
+    CreateCustomerRequest:
+      type: object
+      required: [businessName, type]
+      properties:
+        businessName: { type: string, maxLength: 255 }
+        tradeName: { type: string, maxLength: 255 }
+        type: { type: string, enum: [person, company] }
+        identificationTypeId: { type: string, format: uuid }
+        identification: { type: string, maxLength: 30 }
+        email: { type: string, format: email }
+        phone: { type: string, maxLength: 30 }
+        metadata: { type: object, additionalProperties: true }
+    UpdateCustomerRequest:
+      type: object
+      properties:
+        businessName: { type: string, maxLength: 255 }
+        tradeName: { type: string, maxLength: 255 }
+        identificationTypeId: { type: string, format: uuid }
+        identification: { type: string, maxLength: 30 }
+        email: { type: string, format: email }
+        phone: { type: string, maxLength: 30 }
+        metadata: { type: object, additionalProperties: true }
+    ContactRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 255 }
+        email: { type: string, format: email }
+        phone: { type: string, maxLength: 30 }
+        position: { type: string, maxLength: 100 }
+    AddressRequest:
+      type: object
+      required: [line1]
+      properties:
+        type: { type: string, enum: [billing, shipping, other], default: other }
+        line1: { type: string, maxLength: 255 }
+        line2: { type: string, maxLength: 255 }
+        city: { type: string, maxLength: 100 }
+        province: { type: string, maxLength: 100 }
+        countryCode: { type: string, minLength: 2, maxLength: 2 }
+        postalCode: { type: string, maxLength: 20 }
+        isPrimary: { type: boolean, default: false }
+    TagRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 100 }
+        color: { type: string, maxLength: 20 }
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: CUSTOMER_NOT_FOUND }
+        message: { type: string }
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+
+  responses:
+    ValidationError:
+      description: Error de validación
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { code: VALIDATION_ERROR, message: La petición no es válida. }
+    OrgContextRequired:
+      description: Falta el contexto de organización (X-Organization-Id)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { code: ORG_CONTEXT_REQUIRED, message: Falta el contexto de organización. }
+    Forbidden:
+      description: Permiso insuficiente
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { code: FORBIDDEN, message: Permiso insuficiente. }
+    NotFound:
+      description: Recurso no encontrado (o de otra organización)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { code: CUSTOMER_NOT_FOUND, message: Cliente no encontrado. }

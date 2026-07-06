@@ -1,0 +1,141 @@
+asyncapi: 3.0.0
+
+info:
+  title: customer-service — Eventos
+  version: 1.0.0
+  description: >
+    Eventos de customer-service sobre RabbitMQ. Publica el ciclo de vida del cliente
+    (creado / actualizado / desactivado); billing y realtime los consumen. Consume
+    `tax.identification_type.upserted` para mantener su read-model local de tipos de
+    identificación (usado al validar la identificación del cliente). Patrón Outbox
+    (publicación) + `processed_events` (idempotencia al consumir). Exchange topic
+    `crm.events`; routing key = `type`.
+
+defaultContentType: application/json
+
+servers:
+  rabbitmq:
+    host: localhost:5672
+    protocol: amqp
+    description: Broker RabbitMQ (dev). En producción, RABBITMQ_URL.
+    bindings:
+      amqp:
+        vhost: /
+
+channels:
+  customerCreated:
+    address: customer.customer.created
+    description: Se creó un cliente.
+    servers: [{ $ref: '#/servers/rabbitmq' }]
+    bindings:
+      amqp: { is: routingKey, exchange: { name: crm.events, type: topic, durable: true, vhost: / } }
+    messages:
+      customerCreated: { $ref: '#/components/messages/CustomerCreated' }
+
+  customerUpdated:
+    address: customer.customer.updated
+    description: Cambiaron los datos de un cliente (billing refresca snapshots en borradores).
+    servers: [{ $ref: '#/servers/rabbitmq' }]
+    bindings:
+      amqp: { is: routingKey, exchange: { name: crm.events, type: topic, durable: true, vhost: / } }
+    messages:
+      customerUpdated: { $ref: '#/components/messages/CustomerUpdated' }
+
+  customerDisabled:
+    address: customer.customer.disabled
+    description: Se desactivó un cliente (billing bloquea nuevas facturas).
+    servers: [{ $ref: '#/servers/rabbitmq' }]
+    bindings:
+      amqp: { is: routingKey, exchange: { name: crm.events, type: topic, durable: true, vhost: / } }
+    messages:
+      customerDisabled: { $ref: '#/components/messages/CustomerDisabled' }
+
+  identificationTypeUpserted:
+    address: tax.identification_type.upserted
+    description: (Consumido) tax creó/actualizó un tipo de identificación; alimenta el read-model local.
+    servers: [{ $ref: '#/servers/rabbitmq' }]
+    bindings:
+      amqp: { is: routingKey, exchange: { name: crm.events, type: topic, durable: true, vhost: / } }
+    messages:
+      identificationTypeUpserted: { $ref: '#/components/messages/IdentificationTypeUpserted' }
+
+operations:
+  publishCustomerCreated:
+    action: send
+    channel: { $ref: '#/channels/customerCreated' }
+    summary: Emite customer.customer.created (realtime notifica).
+  publishCustomerUpdated:
+    action: send
+    channel: { $ref: '#/channels/customerUpdated' }
+    summary: Emite customer.customer.updated (billing refresca snapshot del cliente).
+  publishCustomerDisabled:
+    action: send
+    channel: { $ref: '#/channels/customerDisabled' }
+    summary: Emite customer.customer.disabled (billing bloquea facturas nuevas).
+  consumeIdentificationTypeUpserted:
+    action: receive
+    channel: { $ref: '#/channels/identificationTypeUpserted' }
+    summary: Consume tax.identification_type.upserted y hace upsert del read-model local.
+
+components:
+  messageTraits:
+    eventEnvelope:
+      headers:
+        type: object
+        properties:
+          eventId: { type: string, format: uuid, description: Idempotencia. }
+          type: { type: string }
+          occurredAt: { type: string, format: date-time }
+          organizationId: { type: string, format: uuid, nullable: true }
+
+  messages:
+    CustomerCreated:
+      name: customer.customer.created
+      title: Cliente creado
+      contentType: application/json
+      traits: [{ $ref: '#/components/messageTraits/eventEnvelope' }]
+      payload: { $ref: '#/components/schemas/CustomerEventPayload' }
+    CustomerUpdated:
+      name: customer.customer.updated
+      title: Cliente actualizado
+      contentType: application/json
+      traits: [{ $ref: '#/components/messageTraits/eventEnvelope' }]
+      payload: { $ref: '#/components/schemas/CustomerEventPayload' }
+    CustomerDisabled:
+      name: customer.customer.disabled
+      title: Cliente desactivado
+      contentType: application/json
+      traits: [{ $ref: '#/components/messageTraits/eventEnvelope' }]
+      payload: { $ref: '#/components/schemas/CustomerDisabledPayload' }
+    IdentificationTypeUpserted:
+      name: tax.identification_type.upserted
+      title: Tipo de identificación (consumido)
+      contentType: application/json
+      traits: [{ $ref: '#/components/messageTraits/eventEnvelope' }]
+      payload: { $ref: '#/components/schemas/IdentificationTypePayload' }
+
+  schemas:
+    CustomerEventPayload:
+      type: object
+      required: [customerId, organizationId]
+      properties:
+        customerId: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        businessName: { type: string }
+        type: { type: string, enum: [person, company] }
+        identification: { type: string, nullable: true }
+    CustomerDisabledPayload:
+      type: object
+      required: [customerId, organizationId]
+      properties:
+        customerId: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+    IdentificationTypePayload:
+      type: object
+      required: [id, countryCode, code]
+      properties:
+        id: { type: string, format: uuid }
+        countryCode: { type: string, example: EC }
+        code: { type: string, example: RUC }
+        name: { type: string, example: RUC }
+        regex: { type: string, nullable: true, example: "^\\d{13}$" }
