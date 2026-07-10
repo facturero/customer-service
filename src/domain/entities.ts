@@ -16,6 +16,7 @@ export interface CustomerProps {
   phone: string | null;
   type: CustomerType;
   status: CustomerStatus;
+  imageFileId: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: Date;
   updatedAt: Date;
@@ -34,6 +35,7 @@ export class Customer {
     email?: string | null;
     phone?: string | null;
     type: CustomerType;
+    imageFileId?: string | null;
     metadata?: Record<string, unknown> | null;
   }): Customer {
     const now = new Date();
@@ -49,6 +51,7 @@ export class Customer {
       phone: params.phone ?? null,
       type: params.type,
       status: 'active',
+      imageFileId: params.imageFileId ?? null,
       metadata: params.metadata ?? null,
       createdAt: now,
       updatedAt: now,
@@ -70,6 +73,7 @@ export class Customer {
   get phone(): string | null { return this.props.phone; }
   get type(): CustomerType { return this.props.type; }
   get status(): CustomerStatus { return this.props.status; }
+  get imageFileId(): string | null { return this.props.imageFileId; }
   get metadata(): Record<string, unknown> | null { return this.props.metadata; }
   get createdAt(): Date { return this.props.createdAt; }
   get updatedAt(): Date { return this.props.updatedAt; }
@@ -85,6 +89,7 @@ export class Customer {
     identification?: string | null;
     email?: string | null;
     phone?: string | null;
+    imageFileId?: string | null;
     metadata?: Record<string, unknown> | null;
   }): void {
     if (params.businessName !== undefined) this.props.businessName = params.businessName;
@@ -93,6 +98,7 @@ export class Customer {
     if (params.identification !== undefined) this.props.identification = params.identification;
     if (params.email !== undefined) this.props.email = params.email;
     if (params.phone !== undefined) this.props.phone = params.phone;
+    if (params.imageFileId !== undefined) this.props.imageFileId = params.imageFileId;
     if (params.metadata !== undefined) this.props.metadata = params.metadata;
     this.props.updatedAt = new Date();
   }

@@ -10,6 +10,7 @@ export const createCustomerSchema = z.object({
   identification: z.string().max(30).optional(),
   email: z.string().email('Email inválido.').optional().or(z.literal('')),
   phone: z.string().max(30).optional(),
+  imageFileId: z.string().uuid().optional(),
   metadata: z.record(z.unknown()).optional(),
 });
 
@@ -20,6 +21,7 @@ export const updateCustomerSchema = z.object({
   identification: z.string().max(30).optional().nullable(),
   email: z.string().email('Email inválido.').optional().nullable().or(z.literal('')),
   phone: z.string().max(30).optional().nullable(),
+  imageFileId: z.string().uuid().optional().nullable(),
   metadata: z.record(z.unknown()).optional().nullable(),
 });
 

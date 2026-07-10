@@ -10,6 +10,7 @@ export interface CustomerDTO {
   phone: string | null;
   type: 'person' | 'company';
   status: 'active' | 'inactive';
+  imageFileId: string | null;
   metadata: Record<string, unknown> | null;
 }
 
@@ -67,6 +68,7 @@ export interface CreateCustomerInput {
   identification?: string | null;
   email?: string | null;
   phone?: string | null;
+  imageFileId?: string | null;
   metadata?: Record<string, unknown> | null;
 }
 
@@ -79,6 +81,7 @@ export interface UpdateCustomerInput {
   identification?: string | null;
   email?: string | null;
   phone?: string | null;
+  imageFileId?: string | null;
   metadata?: Record<string, unknown> | null;
 }
 

@@ -32,6 +32,7 @@ export function createCustomerController(useCase: CreateCustomerUseCase) {
       identification?: string;
       email?: string;
       phone?: string;
+      imageFileId?: string;
       metadata?: Record<string, unknown>;
     };
     const result = await useCase.execute({
@@ -45,6 +46,7 @@ export function createCustomerController(useCase: CreateCustomerUseCase) {
       identification: body.identification,
       email: body.email || null,
       phone: body.phone,
+      imageFileId: body.imageFileId,
       metadata: body.metadata,
     });
     return c.json(result, 201);
@@ -82,6 +84,7 @@ export function updateCustomerController(useCase: UpdateCustomerUseCase) {
       identification?: string | null;
       email?: string | null;
       phone?: string | null;
+      imageFileId?: string | null;
       metadata?: Record<string, unknown> | null;
     };
     const result = await useCase.execute({ organizationId, id, ...body });

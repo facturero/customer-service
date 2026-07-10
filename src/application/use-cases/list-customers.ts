@@ -23,6 +23,7 @@ export class ListCustomersUseCase {
       phone: c.phone,
       type: c.type,
       status: c.status,
+      imageFileId: c.imageFileId,
       metadata: c.metadata,
     }));
   }

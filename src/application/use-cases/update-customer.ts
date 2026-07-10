@@ -36,6 +36,7 @@ export class UpdateCustomerUseCase {
         identification: input.identification,
         email: input.email,
         phone: input.phone,
+        imageFileId: input.imageFileId,
         metadata: input.metadata,
       });
 
@@ -67,6 +68,7 @@ export class UpdateCustomerUseCase {
         phone: customer.phone,
         type: customer.type,
         status: customer.status,
+        imageFileId: customer.imageFileId,
         metadata: customer.metadata,
       };
     });

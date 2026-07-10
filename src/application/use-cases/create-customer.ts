@@ -36,6 +36,7 @@ export class CreateCustomerUseCase {
         email: input.email ?? null,
         phone: input.phone ?? null,
         type: input.type,
+        imageFileId: input.imageFileId ?? null,
         metadata: input.metadata ?? null,
       });
 
@@ -67,6 +68,7 @@ export class CreateCustomerUseCase {
         phone: customer.phone,
         type: customer.type,
         status: customer.status,
+        imageFileId: customer.imageFileId,
         metadata: customer.metadata,
       };
     });

@@ -29,6 +29,7 @@ export class GetCustomerUseCase {
       phone: customer.phone,
       type: customer.type,
       status: customer.status,
+      imageFileId: customer.imageFileId,
       metadata: customer.metadata,
       contacts: contacts.map((c) => ({
         id: c.id,

@@ -16,6 +16,7 @@ export class CustomerModel extends Model<
   declare phone: string | null;
   declare type: 'person' | 'company';
   declare status: 'active' | 'inactive';
+  declare image_file_id: string | null;
   declare metadata: unknown | null;
   declare created_at: Date;
   declare updated_at: Date;
@@ -34,6 +35,7 @@ CustomerModel.init(
     phone: { type: DataTypes.STRING(30), allowNull: true },
     type: { type: DataTypes.ENUM('person', 'company'), allowNull: false },
     status: { type: DataTypes.ENUM('active', 'inactive'), allowNull: false, defaultValue: 'active' },
+    image_file_id: { type: DataTypes.CHAR(36), allowNull: true },
     metadata: { type: DataTypes.JSON, allowNull: true },
     created_at: DataTypes.DATE,
     updated_at: DataTypes.DATE,
