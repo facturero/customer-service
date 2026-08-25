@@ -1,4 +1,4 @@
-import { CustomerNotFoundError } from '../../domain/errors';
+import { CustomerNotFoundError, CannotDisableSystemCustomerError } from '../../domain/errors';
 import { UnitOfWork } from '../ports';
 
 export class DisableCustomerUseCase {
@@ -9,6 +9,10 @@ export class DisableCustomerUseCase {
       const customer = await repos.customers.findById(id);
       if (!customer || !customer.belongsToOrganization(organizationId)) {
         throw new CustomerNotFoundError();
+      }
+
+      if (customer.isSystem) {
+        throw new CannotDisableSystemCustomerError();
       }
 
       customer.disable();

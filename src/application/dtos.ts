@@ -10,6 +10,7 @@ export interface CustomerDTO {
   phone: string | null;
   type: 'person' | 'company';
   status: 'active' | 'inactive';
+  isSystem: boolean;
   imageFileId: string | null;
   metadata: Record<string, unknown> | null;
 }

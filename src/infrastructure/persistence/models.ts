@@ -16,6 +16,7 @@ export class CustomerModel extends Model<
   declare phone: string | null;
   declare type: 'person' | 'company';
   declare status: 'active' | 'inactive';
+  declare is_system: boolean;
   declare image_file_id: string | null;
   declare metadata: unknown | null;
   declare created_at: Date;
@@ -35,6 +36,7 @@ CustomerModel.init(
     phone: { type: DataTypes.STRING(30), allowNull: true },
     type: { type: DataTypes.ENUM('person', 'company'), allowNull: false },
     status: { type: DataTypes.ENUM('active', 'inactive'), allowNull: false, defaultValue: 'active' },
+    is_system: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     image_file_id: { type: DataTypes.CHAR(36), allowNull: true },
     metadata: { type: DataTypes.JSON, allowNull: true },
     created_at: DataTypes.DATE,
@@ -233,3 +235,6 @@ TagModel.belongsToMany(CustomerModel, {
   foreignKey: 'tag_id',
   otherKey: 'customer_id',
 });
+
+CustomerTagModel.belongsTo(TagModel, { foreignKey: 'tag_id', as: 'tag' });
+TagModel.hasMany(CustomerTagModel, { foreignKey: 'tag_id' });

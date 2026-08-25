@@ -13,6 +13,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=builder /app/dist/ dist/
 COPY migrations/ migrations/
+COPY seeders/ seeders/
 COPY .sequelizerc .sequelizerc
 COPY sequelize.config.cjs sequelize.config.cjs
 USER app

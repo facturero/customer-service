@@ -43,6 +43,7 @@ function toCustomer(m: CustomerModel): Customer {
     phone: m.phone,
     type: m.type,
     status: m.status,
+    isSystem: m.is_system,
     imageFileId: m.image_file_id,
     metadata: m.metadata as Record<string, unknown> | null,
     createdAt: m.created_at,
@@ -160,6 +161,7 @@ function customerRepository(tx?: Transaction): CustomerRepository {
           phone: p.phone,
           type: p.type,
           status: p.status,
+          is_system: p.isSystem,
           image_file_id: p.imageFileId,
           metadata: p.metadata,
           created_at: p.createdAt,
@@ -291,7 +293,7 @@ function customerTagRepository(tx?: Transaction): CustomerTagRepository {
     async listByCustomer(customerId) {
       const rows = await CustomerTagModel.findAll({
         where: { customer_id: customerId },
-        include: [{ model: TagModel, required: true }],
+        include: [{ model: TagModel, as: 'tag', required: true }],
         transaction: tx,
       });
       return rows.map((r) => toTag((r as unknown as { tag: TagModel }).tag));

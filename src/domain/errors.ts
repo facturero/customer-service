@@ -89,3 +89,15 @@ export class TagAlreadyExistsError extends AppError {
   readonly httpStatus = 409;
   constructor(message = 'Ya existe una etiqueta con ese nombre.') { super(message); }
 }
+
+export class CannotDisableSystemCustomerError extends AppError {
+  readonly code = 'CANNOT_DISABLE_SYSTEM_CUSTOMER';
+  readonly httpStatus = 403;
+  constructor(message = 'No se puede deshabilitar el cliente del sistema.') { super(message); }
+}
+
+export class CannotEditSystemCustomerError extends AppError {
+  readonly code = 'CANNOT_EDIT_SYSTEM_CUSTOMER';
+  readonly httpStatus = 403;
+  constructor(message = 'No se puede modificar el cliente del sistema.') { super(message); }
+}

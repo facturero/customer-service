@@ -1,4 +1,4 @@
-import { CustomerNotFoundError, IdentificationTypeNotFoundError, InvalidIdentificationError } from '../../domain/errors';
+import { CustomerNotFoundError, CannotEditSystemCustomerError, IdentificationTypeNotFoundError, InvalidIdentificationError } from '../../domain/errors';
 import { UnitOfWork } from '../ports';
 import { CustomerDTO, UpdateCustomerInput } from '../dtos';
 
@@ -10,6 +10,12 @@ export class UpdateCustomerUseCase {
       const customer = await repos.customers.findById(input.id);
       if (!customer || !customer.belongsToOrganization(input.organizationId)) {
         throw new CustomerNotFoundError();
+      }
+
+      if (customer.isSystem) {
+        if (input.identificationTypeId !== undefined || input.identification !== undefined) {
+          throw new CannotEditSystemCustomerError();
+        }
       }
 
       if (input.identificationTypeId !== undefined || input.identification !== undefined) {
@@ -68,6 +74,7 @@ export class UpdateCustomerUseCase {
         phone: customer.phone,
         type: customer.type,
         status: customer.status,
+        isSystem: customer.isSystem,
         imageFileId: customer.imageFileId,
         metadata: customer.metadata,
       };

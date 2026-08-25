@@ -68,6 +68,7 @@ export class CreateCustomerUseCase {
         phone: customer.phone,
         type: customer.type,
         status: customer.status,
+        isSystem: customer.isSystem,
         imageFileId: customer.imageFileId,
         metadata: customer.metadata,
       };

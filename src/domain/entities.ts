@@ -16,6 +16,7 @@ export interface CustomerProps {
   phone: string | null;
   type: CustomerType;
   status: CustomerStatus;
+  isSystem: boolean;
   imageFileId: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: Date;
@@ -35,6 +36,7 @@ export class Customer {
     email?: string | null;
     phone?: string | null;
     type: CustomerType;
+    isSystem?: boolean;
     imageFileId?: string | null;
     metadata?: Record<string, unknown> | null;
   }): Customer {
@@ -51,6 +53,7 @@ export class Customer {
       phone: params.phone ?? null,
       type: params.type,
       status: 'active',
+      isSystem: params.isSystem ?? false,
       imageFileId: params.imageFileId ?? null,
       metadata: params.metadata ?? null,
       createdAt: now,
@@ -73,10 +76,15 @@ export class Customer {
   get phone(): string | null { return this.props.phone; }
   get type(): CustomerType { return this.props.type; }
   get status(): CustomerStatus { return this.props.status; }
+  get isSystem(): boolean { return this.props.isSystem; }
   get imageFileId(): string | null { return this.props.imageFileId; }
   get metadata(): Record<string, unknown> | null { return this.props.metadata; }
   get createdAt(): Date { return this.props.createdAt; }
   get updatedAt(): Date { return this.props.updatedAt; }
+
+  canBeDisabled(): boolean {
+    return !this.props.isSystem;
+  }
 
   belongsToOrganization(organizationId: string): boolean {
     return this.props.organizationId === organizationId;
