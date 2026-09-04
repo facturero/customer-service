@@ -5,6 +5,7 @@ import { sequelize } from './infrastructure/persistence/sequelize';
 import './infrastructure/persistence/models';
 import { buildRepositories, SequelizeUnitOfWork } from './infrastructure/persistence/repositories';
 import { startConsumers } from './infrastructure/messaging/consumer';
+import { OutboxRelay } from '@facturero/outbox-relay';
 import { CreateCustomerUseCase } from './application/use-cases/create-customer';
 import { ListCustomersUseCase } from './application/use-cases/list-customers';
 import { GetCustomerUseCase } from './application/use-cases/get-customer';
@@ -55,6 +56,15 @@ async function main(): Promise<void> {
     },
     corsOrigin: config.CORS_ORIGIN,
   });
+
+  if (config.RABBITMQ_URL) {
+    const relay = new OutboxRelay({
+      sequelize,
+      rabbitmqUrl: config.RABBITMQ_URL,
+      exchange: 'crm.events',
+    });
+    await relay.start();
+  }
 
   await startConsumers();
 
