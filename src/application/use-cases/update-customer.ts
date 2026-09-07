@@ -1,4 +1,4 @@
-import { CustomerNotFoundError, CannotEditSystemCustomerError, IdentificationTypeNotFoundError, InvalidIdentificationError } from '../../domain/errors';
+import { CustomerNotFoundError, CannotEditSystemCustomerError, IdentificationTypeNotFoundError, InvalidIdentificationError, CustomerAlreadyExistsError } from '../../domain/errors';
 import { UnitOfWork } from '../ports';
 import { CustomerDTO, UpdateCustomerInput } from '../dtos';
 
@@ -32,6 +32,15 @@ export class UpdateCustomerUseCase {
               throw new InvalidIdentificationError();
             }
           }
+        }
+
+        // Pre-check de unicidad antes de persistir: si la identificación
+        // efectiva cambió a una que ya usa OTRO cliente de la organización,
+        // respondemos 409 limpio en vez de reventar en el UPDATE con el
+        // índice único (TEST-PLAN.md #22).
+        if (idValue && idValue !== customer.identification) {
+          const existing = await repos.customers.findByIdentification(input.organizationId, idValue);
+          if (existing && existing.id !== customer.id) throw new CustomerAlreadyExistsError();
         }
       }
 

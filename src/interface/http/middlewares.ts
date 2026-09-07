@@ -73,6 +73,14 @@ export function errorHandler(err: Error, c: Context): Response {
     );
   }
 
+  // Safety net de unicidad: si dos updates de cliente con la misma
+  // identificación cruzan el pre-check de UpdateCustomerUseCase (carrera),
+  // la restricción unique_index de la tabla devuelve este error de Sequelize.
+  // Lo traducimos al mismo contrato 409 que el happy path (TEST-PLAN.md #22).
+  if (err instanceof Error && err.name === 'SequelizeUniqueConstraintError') {
+    return c.json({ code: 'CUSTOMER_EXISTS', message: 'Ya existe un cliente con esa identificación.' }, 409);
+  }
+
   console.error('[customer-service] error no controlado:', err);
   return c.json({ code: 'INTERNAL_ERROR', message: 'Error interno del servidor.' }, 500);
 }
