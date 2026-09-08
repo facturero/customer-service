@@ -23,6 +23,22 @@ export class UpdateContactUseCase {
 
     await this.repos.contacts.save(contact);
 
+    // Direcciones, contactos y etiquetas del cliente: hasta ahora solo el alta,
+    // edición y baja del CLIENTE emitían evento, así que todo lo que colgaba de
+    // él se podía cambiar sin dejar rastro en la bitácora.
+    await this.repos.outbox.add({
+      type: 'customer.contact.updated',
+      aggregateType: 'contact',
+      aggregateId: contact.id,
+      payload: {
+        organizationId: input.organizationId,
+        customerId: contact.customerId,
+        contactId: contact.id,
+      },
+      occurredAt: new Date(),
+    });
+
+
     return {
       id: contact.id,
       customerId: contact.customerId,

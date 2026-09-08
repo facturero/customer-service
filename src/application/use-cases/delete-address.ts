@@ -14,5 +14,21 @@ export class DeleteAddressUseCase {
     }
 
     await this.repos.addresses.delete(id);
+
+    // Direcciones, contactos y etiquetas del cliente: hasta ahora solo el alta,
+    // edición y baja del CLIENTE emitían evento, así que todo lo que colgaba de
+    // él se podía cambiar sin dejar rastro en la bitácora.
+    await this.repos.outbox.add({
+      type: 'customer.address.deleted',
+      aggregateType: 'address',
+      aggregateId: id,
+      payload: {
+        organizationId: organizationId,
+        customerId: address.customerId,
+        addressId: id,
+      },
+      occurredAt: new Date(),
+    });
+
   }
 }

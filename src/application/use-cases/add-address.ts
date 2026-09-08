@@ -26,6 +26,22 @@ export class AddAddressUseCase {
 
     await this.repos.addresses.save(address);
 
+    // Direcciones, contactos y etiquetas del cliente: hasta ahora solo el alta,
+    // edición y baja del CLIENTE emitían evento, así que todo lo que colgaba de
+    // él se podía cambiar sin dejar rastro en la bitácora.
+    await this.repos.outbox.add({
+      type: 'customer.address.added',
+      aggregateType: 'address',
+      aggregateId: address.id,
+      payload: {
+        organizationId: input.organizationId,
+        customerId: input.customerId,
+        addressId: address.id,
+      },
+      occurredAt: new Date(),
+    });
+
+
     return {
       id: address.id,
       customerId: address.customerId,
