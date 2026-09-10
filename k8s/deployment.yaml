@@ -14,6 +14,43 @@ spec:
       labels:
         app: customer-service-node
     spec:
+      initContainers:
+        - name: customer-migrate
+          image: ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+          securityContext:
+            runAsUser: 0
+          command:
+            - sh
+            - -c
+            - "npx sequelize-cli db:migrate"
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: customer-db
+                  key: host
+            - name: DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: customer-db
+                  key: port
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: customer-db
+                  key: user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: customer-db
+                  key: password
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: customer-db
+                  key: name
       containers:
         - name: customer-service
           image: ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
