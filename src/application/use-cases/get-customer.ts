@@ -11,10 +11,11 @@ export class GetCustomerUseCase {
       throw new CustomerNotFoundError();
     }
 
-    const [contacts, addresses, tags] = await Promise.all([
+    const [contacts, addresses, tags, identificationType] = await Promise.all([
       this.repos.contacts.listByCustomer(id),
       this.repos.addresses.listByCustomer(id),
       this.repos.customerTags.listByCustomer(id),
+      customer.identificationTypeId ? this.repos.identificationTypes.findById(customer.identificationTypeId) : null,
     ]);
 
     return {
@@ -22,6 +23,7 @@ export class GetCustomerUseCase {
       organizationId: customer.organizationId,
       countryCode: customer.countryCode,
       identificationTypeId: customer.identificationTypeId,
+      identificationTypeCode: identificationType?.code ?? null,
       identification: customer.identification,
       businessName: customer.businessName,
       tradeName: customer.tradeName,

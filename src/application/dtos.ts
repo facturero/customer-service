@@ -16,6 +16,14 @@ export interface CustomerDTO {
 }
 
 export interface CustomerDetailDTO extends CustomerDTO {
+  /**
+   * Código del tipo de identificación (`RUC`, `CEDULA`, `PASAPORTE`...). Los ids
+   * de este catálogo NO coinciden con los de tax-service (cada servicio sembró el
+   * suyo), así que otros servicios tienen que usar el código, no el id: con el
+   * id, fiscal-ecuador no encontraba el tipo y declaraba un pasaporte de 10
+   * dígitos como cédula.
+   */
+  identificationTypeCode: string | null;
   contacts: ContactDTO[];
   addresses: AddressDTO[];
   tags: TagDTO[];
