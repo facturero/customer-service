@@ -18,6 +18,8 @@ export interface ListCustomersFilters {
   search?: string;
   status?: string;
   tagId?: string;
+  limit?: number;
+  offset?: number;
 }
 
 export interface CustomerRepository {

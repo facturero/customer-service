@@ -153,6 +153,8 @@ export interface ListCustomersInput {
   search?: string;
   status?: string;
   tagId?: string;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface CreateTagInput {

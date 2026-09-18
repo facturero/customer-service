@@ -143,7 +143,11 @@ function customerRepository(tx?: Transaction): CustomerRepository {
       const rows = await CustomerModel.findAll({
         where,
         transaction: tx,
-        order: [['created_at', 'DESC']],
+        order: [['created_at', 'DESC'], ['id', 'DESC']],
+        // Paginar SIEMPRE: antes era findAll sin límite → devolvía todos los
+        // clientes del org y con miles de filas disparaba 5s + errores 500.
+        limit: filters.limit,
+        offset: filters.offset,
       });
       return rows.map(toCustomer);
     },

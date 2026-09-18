@@ -59,7 +59,9 @@ export function listCustomersController(useCase: ListCustomersUseCase) {
     const search = c.req.query('search');
     const status = c.req.query('status');
     const tagId = c.req.query('tagId');
-    const result = await useCase.execute({ organizationId, search, status, tagId });
+    const page = c.req.query('page') ? Number(c.req.query('page')) : undefined;
+    const pageSize = c.req.query('pageSize') ? Number(c.req.query('pageSize')) : undefined;
+    const result = await useCase.execute({ organizationId, search, status, tagId, page, pageSize });
     return c.json(result, 200);
   };
 }

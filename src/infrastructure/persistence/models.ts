@@ -42,7 +42,14 @@ CustomerModel.init(
     created_at: DataTypes.DATE,
     updated_at: DataTypes.DATE,
   },
-  { sequelize, tableName: 'customers', timestamps: false },
+  {
+    sequelize,
+    tableName: 'customers',
+    timestamps: false,
+    // El listado filtra por organization_id y ordena por created_at DESC, id DESC.
+    // Sin este índice había filesort de todas las filas del org en cada petición.
+    indexes: [{ name: 'customers_org_created', fields: ['organization_id', 'created_at', 'id'] }],
+  },
 );
 
 export class ContactModel extends Model<
