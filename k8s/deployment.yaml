@@ -101,9 +101,9 @@ spec:
             requests:
               memory: "128Mi"
               cpu: "100m"
-            limits:
-              memory: "256Mi"
-              cpu: "300m"
+            # limits removidos a propósito: se están midiendo los máximos RPS sin
+            # techos artificiales de CPU/memoria (el límite de 256Mi/300m
+            # throttleaba y causaba OOM). Re-añadir con valores holgados tras medir.
           livenessProbe:
             httpGet:
               path: /health
