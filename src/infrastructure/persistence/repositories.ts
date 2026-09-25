@@ -52,6 +52,40 @@ function toCustomer(m: CustomerModel): Customer {
   });
 }
 
+/**
+ * Igual que toCustomer pero desde una fila cruda (findAll con raw: true). El listado
+ * la usa para no instanciar un modelo de Sequelize por fila: con 50 filas por pagina
+ * esa hidratacion era una parte importante de los ~6 ms de CPU de Node por peticion
+ * y limitaba GET /customers a ~238 RPS. Con raw, Sequelize no convierte tipos:
+ * TINYINT llega como 0/1 (is_system) y metadata puede llegar como texto JSON o ya
+ * parseado segun el driver, asi que se normalizan aqui.
+ */
+type CustomerRow = Record<string, unknown>;
+function toCustomerFromRow(r: CustomerRow): Customer {
+  const metadata =
+    typeof r.metadata === 'string'
+      ? (JSON.parse(r.metadata) as Record<string, unknown>)
+      : ((r.metadata ?? null) as Record<string, unknown> | null);
+  return Customer.fromPersistence({
+    id: r.id as string,
+    organizationId: r.organization_id as string,
+    countryCode: r.country_code as string,
+    identificationTypeId: (r.identification_type_id ?? null) as string | null,
+    identification: (r.identification ?? null) as string | null,
+    businessName: r.business_name as string,
+    tradeName: (r.trade_name ?? null) as string | null,
+    email: (r.email ?? null) as string | null,
+    phone: (r.phone ?? null) as string | null,
+    type: r.type as 'person' | 'company',
+    status: r.status as 'active' | 'inactive',
+    isSystem: Boolean(r.is_system),
+    imageFileId: (r.image_file_id ?? null) as string | null,
+    metadata,
+    createdAt: r.created_at as Date,
+    updatedAt: r.updated_at as Date,
+  });
+}
+
 function toContact(m: ContactModel): Contact {
   return Contact.fromPersistence({
     id: m.id,
@@ -142,6 +176,8 @@ function customerRepository(tx?: Transaction): CustomerRepository {
 
       const rows = await CustomerModel.findAll({
         where,
+        // raw: filas planas, sin instanciar un modelo por fila (ver toCustomerFromRow).
+        raw: true,
         transaction: tx,
         order: [['created_at', 'DESC'], ['id', 'DESC']],
         // Paginar SIEMPRE: antes era findAll sin límite → devolvía todos los
@@ -149,7 +185,7 @@ function customerRepository(tx?: Transaction): CustomerRepository {
         limit: filters.limit,
         offset: filters.offset,
       });
-      return rows.map(toCustomer);
+      return (rows as unknown as CustomerRow[]).map(toCustomerFromRow);
     },
     async save(customer) {
       const p = customer.toPersistence();
