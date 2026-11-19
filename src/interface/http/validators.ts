@@ -6,23 +6,23 @@ export const createCustomerSchema = z.object({
   businessName: z.string().min(1, 'La razón social es obligatoria.').max(255),
   tradeName: z.string().max(255).optional(),
   type: z.enum(['person', 'company']),
-  identificationTypeId: z.string().uuid().optional(),
+  identificationTypeId: z.string().guid().optional(),
   identification: z.string().max(30).optional(),
   email: z.string().email('Email inválido.').optional().or(z.literal('')),
   phone: z.string().max(30).optional(),
-  imageFileId: z.string().uuid().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  imageFileId: z.string().guid().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const updateCustomerSchema = z.object({
   businessName: z.string().max(255).optional(),
   tradeName: z.string().max(255).optional().nullable(),
-  identificationTypeId: z.string().uuid().optional().nullable(),
+  identificationTypeId: z.string().guid().optional().nullable(),
   identification: z.string().max(30).optional().nullable(),
   email: z.string().email('Email inválido.').optional().nullable().or(z.literal('')),
   phone: z.string().max(30).optional().nullable(),
-  imageFileId: z.string().uuid().optional().nullable(),
-  metadata: z.record(z.unknown()).optional().nullable(),
+  imageFileId: z.string().guid().optional().nullable(),
+  metadata: z.record(z.string(), z.unknown()).optional().nullable(),
 });
 
 export const contactSchema = z.object({
@@ -67,7 +67,7 @@ export const createTagSchema = z.object({
 });
 
 export const assignTagSchema = z.object({
-  tagId: z.string().uuid('El ID de la etiqueta no es válido.'),
+  tagId: z.string().guid('El ID de la etiqueta no es válido.'),
 });
 
 export function validateJson<T extends ZodSchema>(schema: T) {
